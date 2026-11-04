@@ -1,0 +1,51 @@
+#include "sparse_gemm.h"
+#include <stdio.h>
+#include <arm_neon.h>
+
+int gemm_sparse_neon(const float *a, const sparse_weights *w, float *c, size_t m)
+{
+    (void)a; (void)w; (void)c; (void)m;
+
+    for(size_t i=0; i< m ; i++){
+        for(size_t g= 0; g < w->n/4; g++){
+
+            float32x4_t acc=vdupq_n_f32(0.0f);
+
+            for(size_t p= w->block_col_ptr[g]; p < w->block_col_ptr[g+1]; p++){
+
+                size_t k0 = 4 * (size_t)w->block_row_idx[p];
+
+                float32x4_t av= vld1q_f32(a + i*w->k + k0);
+
+                float32x4_t block_weights0 = vld1q_f32(w->block_values + 16*p);
+                acc= vfmaq_laneq_f32(acc, block_weights0, av , 0 );
+
+                float32x4_t block_weights1 = vld1q_f32(w->block_values + 16*p + 4);
+                acc= vfmaq_laneq_f32(acc, block_weights1, av , 1 );
+
+                float32x4_t block_weights2 = vld1q_f32(w->block_values + 16*p + 8 );
+                acc= vfmaq_laneq_f32(acc, block_weights2, av , 2 );
+
+                float32x4_t block_weights3 = vld1q_f32(w->block_values + 16*p + 12);
+                acc= vfmaq_laneq_f32(acc, block_weights3, av , 3 );
+                
+                
+
+                }
+                            vst1q_f32(c + i * w->n + 4 * g, acc);
+
+
+            }
+
+        }
+        return 0;
+    }
+
+
+    /* TODO: for each output row and 4-column group, keep a float32x4_t
+       accumulator. For each stored block/reduction row, broadcast A with
+       vdupq_n_f32, load four adjacent block values with vld1q_f32, and use
+       vfmaq_f32. Store once with vst1q_f32. See gemm_sparse_scalar for the
+       compressed-column traversal and preserve the same block ordering. */
+    
+
