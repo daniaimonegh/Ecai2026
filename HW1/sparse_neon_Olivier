@@ -1,12 +1,6 @@
 #include "sparse_gemm.h"
 #include <arm_neon.h>
 
-/* Sparse 4x4 BCC GEMM with NEON.
- * One float32x4_t accumulator holds the four adjacent output columns of
- * group g. For each stored block, the four matching inputs A[i, k0..k0+3]
- * are loaded with one vld1q_f32, and each weight row r is multiplied by
- * lane r of that vector (vfmaq_laneq_f32). Block order matches
- * gemm_sparse_scalar. */
 int gemm_sparse_neon(const float *a, const sparse_weights *w, float *c, size_t m)
 {
     if (!a || !w || !c)
